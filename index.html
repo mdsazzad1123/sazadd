@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Selector App</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+        }
+        body {
+            background-color: #0f172a;
+            color: #ffffff;
+            width: 100vw;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .app-container {
+            width: 100%;
+            min-height: 100%;
+            background-color: #1e293b;
+            border: 2px solid #fbbf24;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px 0;
+        }
+        #appTitle {
+            margin-bottom: 20px;
+            color: #10b981;
+            z-index: 5;
+        }
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 450px;
+            z-index: 5;
+            margin-bottom: 20px;
+        }
+        .video-box {
+            width: 100%;
+            background-color: #334155;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+        }
+        .video-box label {
+            color: #fbbf24;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .preview-video {
+            width: 100%;
+            border-radius: 8px;
+            display: none;
+            background-color: #000000;
+            border: 1px solid #475569;
+            margin-top: 5px;
+            aspect-ratio: 16 / 9;
+        }
+        .trim-options {
+            display: none;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .time-box {
+            display: flex;
+            flex-direction: column;
+            width: 48%;
+            gap: 5px;
+        }
+        .time-box input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #ffffff;
+        }
+        button {
+            background-color: #10b981;
+            color: #ffffff;
+            border: 2px solid #fbbf24;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .set-time-btn {
+            background-color: #3b82f6;
+            border: 1px solid #60a5fa;
+            padding: 8px;
+            font-size: 13px;
+            border-radius: 6px;
+            margin-top: 0;
+        }
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            background-color: #000000;
+            z-index: 9999;
+        }
+        #video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        #video2 {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (min-width: 1025px) {
+            button:hover {
+                background-color: #059669;
+            }
+            .set-time-btn:hover {
+                background-color: #2563eb;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h2 id="appTitle">মাল্টি ভিডিও প্লেয়ার</h2>
+        
+        <div class="input-section" id="inputSection">
+            <div class="video-box">
+                <label>ভিডিও ১ (PS-1)</label>
+                <input type="file" id="videoInput1" accept="video/*">
+                <video id="preview1" class="preview-video" controls></video>
+                <div class="trim-options" id="trimOptions1">
+                    <div class="time-box">
+                        <input type="number" id="start1" placeholder="শুরু (সেকেন্ড)" min="0" value="0" step="0.1">
+                        <button type="button" class="set-time-btn" id="setStart1">এখান থেকে শুরু</button>
+                    </div>
+                    <div class="time-box">
+                        <input type="number" id="end1" placeholder="শেষ (সেকেন্ড)" min="0" step="0.1">
+                        <button type="button" class="set-time-btn" id="setEnd1">এখানে শেষ</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="video-box">
+                <label>ভিডিও ২ (PS-2)</label>
+                <input type="file" id="videoInput2" accept="video/*">
+                <video id="preview2" class="preview-video" controls></video>
+                <div class="trim-options" id="trimOptions2">
+                    <div class="time-box">
+                        <input type="number" id="start2" placeholder="শুরু (সেকেন্ড)" min="0" value="0" step="0.1">
+                        <button type="button" class="set-time-btn" id="setStart2">এখান থেকে শুরু</button>
+                    </div>
+                    <div class="time-box">
+                        <input type="number" id="end2" placeholder="শেষ (সেকেন্ড)" min="0" step="0.1">
+                        <button type="button" class="set-time-btn" id="setEnd2">এখানে শেষ</button>
+                    </div>
+                </div>
+            </div>
+
+            <button id="startBtn">Start</button>
+        </div>
+
+        <div id="video-container">
+            <video id="video1" playsinline></video>
+            <video id="video2" playsinline></video>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrzdNV55JNnTwIY8AmgjvXW7EDOLn_vZE",
+            authDomain: "hlw-word.firebaseapp.com",
+            databaseURL: "https://hlw-word-default-rtdb.firebaseio.com",
+            projectId: "hlw-word",
+            storageBucket: "hlw-word.firebasestorage.app",
+            messagingSenderId: "872970288128",
+            appId: "1:872970288128:web:5878c88e1c567d0bcb6ce5",
+            measurementId: "G-0MSJJR5R8K"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const db = firebase.database();
+        const auth = firebase.auth ? firebase.auth() : null;
+
+        const videoInput1 = document.getElementById('videoInput1');
+        const videoInput2 = document.getElementById('videoInput2');
+        const startBtn = document.getElementById('startBtn');
+        const inputSection = document.getElementById('inputSection');
+        const appTitle = document.getElementById('appTitle');
+        const videoContainer = document.getElementById('video-container');
+        
+        const video1 = document.getElementById('video1');
+        const video2 = document.getElementById('video2');
+        const preview1 = document.getElementById('preview1');
+        const preview2 = document.getElementById('preview2');
+
+        const trimOptions1 = document.getElementById('trimOptions1');
+        const trimOptions2 = document.getElementById('trimOptions2');
+        const start1 = document.getElementById('start1');
+        const end1 = document.getElementById('end1');
+        const start2 = document.getElementById('start2');
+        const end2 = document.getElementById('end2');
+
+        const setStart1 = document.getElementById('setStart1');
+        const setEnd1 = document.getElementById('setEnd1');
+        const setStart2 = document.getElementById('setStart2');
+        const setEnd2 = document.getElementById('setEnd2');
+
+        let selectedVideo1 = null;
+        let selectedVideo2 = null;
+        let activeVideo = null;
+        let isStarted = false;
+        let lastTimestamp = null;
+
+        let v1StartTime = 0;
+        let v1EndTime = 99999;
+        let v2StartTime = 0;
+        let v2EndTime = 99999;
+
+        videoInput1.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                selectedVideo1 = file;
+                const url = URL.createObjectURL(file);
+                preview1.src = url;
+                preview1.style.display = 'block';
+                
+                preview1.onloadedmetadata = () => {
+                    end1.value = preview1.duration.toFixed(1);
+                    trimOptions1.style.display = 'flex';
+                };
+            }
+        });
+
+        videoInput2.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                selectedVideo2 = file;
+                const url = URL.createObjectURL(file);
+                preview2.src = url;
+                preview2.style.display = 'block';
+                
+                preview2.onloadedmetadata = () => {
+                    end2.value = preview2.duration.toFixed(1);
+                    trimOptions2.style.display = 'flex';
+                };
+            }
+        });
+
+        setStart1.addEventListener('click', () => {
+            start1.value = preview1.currentTime.toFixed(1);
+        });
+        setEnd1.addEventListener('click', () => {
+            end1.value = preview1.currentTime.toFixed(1);
+        });
+
+        setStart2.addEventListener('click', () => {
+            start2.value = preview2.currentTime.toFixed(1);
+        });
+        setEnd2.addEventListener('click', () => {
+            end2.value = preview2.currentTime.toFixed(1);
+        });
+
+        function openFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {});
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+
+        function playVideo1() {
+            if (selectedVideo1) {
+                video1.style.opacity = '1';
+                video2.style.opacity = '0';
+                video1.currentTime = v1StartTime;
+                video1.play();
+                video2.pause();
+                activeVideo = video1;
+            }
+        }
+
+        function playVideo2() {
+            if (selectedVideo2) {
+                video2.style.opacity = '1';
+                video1.style.opacity = '0';
+                video2.currentTime = v2StartTime;
+                video2.play();
+                video1.pause();
+                activeVideo = video2;
+            }
+        }
+
+        function pauseActiveVideo() {
+            if (activeVideo) {
+                activeVideo.pause();
+            }
+        }
+
+        function resumeActiveVideo() {
+            if (activeVideo) {
+                activeVideo.play();
+            }
+        }
+
+        function muteVideos() {
+            video1.muted = true;
+            video2.muted = true;
+        }
+
+        function unmuteVideos() {
+            video1.muted = false;
+            video2.muted = false;
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (selectedVideo1 || selectedVideo2) {
+                openFullscreen();
+                
+                preview1.pause();
+                preview2.pause();
+
+                if (selectedVideo1) {
+                    video1.src = URL.createObjectURL(selectedVideo1);
+                    v1StartTime = parseFloat(start1.value) || 0;
+                    v1EndTime = parseFloat(end1.value) || 99999;
+                }
+                if (selectedVideo2) {
+                    video2.src = URL.createObjectURL(selectedVideo2);
+                    v2StartTime = parseFloat(start2.value) || 0;
+                    v2EndTime = parseFloat(end2.value) || 99999;
+                }
+
+                document.body.style.overflow = 'hidden';
+                inputSection.style.display = 'none';
+                appTitle.style.display = 'none';
+                videoContainer.style.display = 'block';
+                isStarted = true;
+
+                if (selectedVideo1) {
+                    playVideo1();
+                } else if (selectedVideo2) {
+                    playVideo2();
+                }
+            } else {
+                alert('দয়া করে অন্তত একটি ভিডিও নির্বাচন করুন!');
+            }
+        });
+
+        video1.addEventListener('timeupdate', () => {
+            if (video1.currentTime >= v1EndTime) {
+                video1.currentTime = v1StartTime;
+                video1.play();
+            }
+        });
+
+        video2.addEventListener('timeupdate', () => {
+            if (video2.currentTime >= v2EndTime) {
+                video2.currentTime = v2StartTime;
+                video2.play();
+            }
+        });
+
+        db.ref('video_control').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.timestamp !== lastTimestamp) {
+                if (lastTimestamp !== null && isStarted) {
+                    if (data.command === 'ps1') {
+                        playVideo1();
+                    } else if (data.command === 'ps2') {
+                        playVideo2();
+                    } else if (data.command === 'pause') {
+                        pauseActiveVideo();
+                    } else if (data.command === 'resume') {
+                        resumeActiveVideo();
+                    } else if (data.command === 'mute') {
+                        muteVideos();
+                    } else if (data.command === 'unmute') {
+                        unmuteVideos();
+                    }
+                }
+                lastTimestamp = data.timestamp;
+            }
+        });
+    </script>
+</body>
+</html>
